@@ -10,3 +10,4 @@ pom.xml.next
 *.ucls
 .idea/
 *.iml
+.*swp

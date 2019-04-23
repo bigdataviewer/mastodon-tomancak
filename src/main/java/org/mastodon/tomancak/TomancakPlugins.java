@@ -20,6 +20,8 @@ import org.mastodon.revised.ui.keymap.CommandDescriptions;
 import org.scijava.AbstractContextual;
 import org.scijava.Context;
 import org.scijava.plugin.Plugin;
+import org.scijava.command.CommandService;
+import org.scijava.log.LogService;
 import org.scijava.ui.behaviour.util.AbstractNamedAction;
 import org.scijava.ui.behaviour.util.Actions;
 import org.scijava.ui.behaviour.util.RunnableAction;
@@ -34,11 +36,23 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 	private static final String FLIP_DESCENDANTS = "[tomancak] flip descendants";
 	private static final String COPY_TAG = "[tomancak] copy tag";
 	private static final String INTERPOLATE_SPOTS = "[tomancak] interpolate spots";
+	private static final String IMPORT_FROM_IMAGES = "[tomancak] import from instance segmentation";
+
+	private static final String POINTS_EXPORT_3COLS = "[tomancak] export spots as 3col points";
+	private static final String POINTS_IMPORT_3COLS = "[tomancak] import spots from 3col points";
+	private static final String POINTS_EXPORT_4COLS = "[tomancak] export spots as 4col points";
+	private static final String POINTS_IMPORT_4COLS = "[tomancak] import spots from 4col points";
 
 	private static final String[] EXPORT_PHYLOXML_KEYS = { "not mapped" };
 	private static final String[] FLIP_DESCENDANTS_KEYS = { "not mapped" };
 	private static final String[] COPY_TAG_KEYS = { "not mapped" };
 	private static final String[] INTERPOLATE_SPOTS_KEYS = { "not mapped" };
+	private static final String[] IMPORT_FROM_IMAGES_KEYS = { "not mapped" };
+
+	private static final String[] POINTS_EXPORT_3COLS_KEYS = { "not mapped" };
+	private static final String[] POINTS_IMPORT_3COLS_KEYS = { "not mapped" };
+	private static final String[] POINTS_EXPORT_4COLS_KEYS = { "not mapped" };
+	private static final String[] POINTS_IMPORT_4COLS_KEYS = { "not mapped" };
 
 	private static Map< String, String > menuTexts = new HashMap<>();
 
@@ -48,6 +62,12 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 		menuTexts.put( FLIP_DESCENDANTS, "Flip descendants" );
 		menuTexts.put( COPY_TAG, "Copy Tag..." );
 		menuTexts.put( INTERPOLATE_SPOTS, "Interpolate Missing Spots" );
+		menuTexts.put( IMPORT_FROM_IMAGES, "Import from instance segmentation" );
+
+		menuTexts.put( POINTS_EXPORT_3COLS, "Export to 3-column files" );
+		menuTexts.put( POINTS_IMPORT_3COLS, "Import from 3-column file" );
+		menuTexts.put( POINTS_EXPORT_4COLS, "Export to 4-column file" );
+		menuTexts.put( POINTS_IMPORT_4COLS, "Import from 4-column file" );
 	}
 
 	/*
@@ -79,6 +99,13 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 
 	private final AbstractNamedAction interpolateSpotsAction;
 
+	private final AbstractNamedAction importFromImagesAction;
+
+	private final AbstractNamedAction exportThreeColumnPointsPerTimepointsAction;
+	private final AbstractNamedAction importThreeColumnPointsAction;
+	private final AbstractNamedAction exportFourColumnPointsAction;
+	private final AbstractNamedAction importFourColumnPointsAction;
+
 	private MastodonPluginAppModel pluginAppModel;
 
 	public TomancakPlugins()
@@ -87,6 +114,14 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 		flipDescendantsAction = new RunnableAction( FLIP_DESCENDANTS, this::flipDescendants );
 		copyTagAction = new RunnableAction( COPY_TAG, this::copyTag );
 		interpolateSpotsAction = new RunnableAction( INTERPOLATE_SPOTS, this::interpolateSpots );
+		importFromImagesAction = new RunnableAction( IMPORT_FROM_IMAGES, this::importFromImages );
+
+		exportThreeColumnPointsPerTimepointsAction = new RunnableAction( POINTS_EXPORT_3COLS, this::exportThreeColumnPointsPerTimepoints );
+		importThreeColumnPointsAction              = new RunnableAction( POINTS_IMPORT_3COLS, this::importThreeColumnPoints );
+		exportFourColumnPointsAction               = new RunnableAction( POINTS_EXPORT_4COLS, this::exportFourColumnPoints );
+		importFourColumnPointsAction               = new RunnableAction( POINTS_IMPORT_4COLS, this::importFourColumnPoints );
+
+
 		updateEnabledActions();
 	}
 
@@ -103,10 +138,16 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 		return Arrays.asList(
 				menu( "Plugins",
 						menu( "Tomancak lab",
+								menu( "Spots from/to TXT files",
+									item( POINTS_EXPORT_3COLS ),
+									item( POINTS_IMPORT_3COLS ),
+									item( POINTS_EXPORT_4COLS ),
+									item( POINTS_IMPORT_4COLS ) ),
 								item( EXPORT_PHYLOXML ),
 								item( FLIP_DESCENDANTS ),
 								item( INTERPOLATE_SPOTS ),
-								item( COPY_TAG ) ) ) );
+								item( COPY_TAG ),
+								item( IMPORT_FROM_IMAGES ) ) ) );
 	}
 
 	@Override
@@ -122,6 +163,12 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 		actions.namedAction( flipDescendantsAction, FLIP_DESCENDANTS_KEYS );
 		actions.namedAction( copyTagAction, COPY_TAG_KEYS );
 		actions.namedAction( interpolateSpotsAction, INTERPOLATE_SPOTS_KEYS );
+		actions.namedAction( importFromImagesAction, IMPORT_FROM_IMAGES_KEYS );
+
+		actions.namedAction( exportThreeColumnPointsPerTimepointsAction, POINTS_EXPORT_3COLS_KEYS );
+		actions.namedAction( importThreeColumnPointsAction,              POINTS_IMPORT_3COLS_KEYS );
+		actions.namedAction( exportFourColumnPointsAction,               POINTS_EXPORT_4COLS_KEYS );
+		actions.namedAction( importFourColumnPointsAction,               POINTS_IMPORT_4COLS_KEYS );
 	}
 
 	private void updateEnabledActions()
@@ -129,6 +176,12 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 		final MamutAppModel appModel = ( pluginAppModel == null ) ? null : pluginAppModel.getAppModel();
 		exportPhyloXmlAction.setEnabled( appModel != null );
 		flipDescendantsAction.setEnabled( appModel != null );
+		importFromImagesAction.setEnabled( appModel != null );
+
+		exportThreeColumnPointsPerTimepointsAction.setEnabled( appModel != null );
+		importThreeColumnPointsAction.setEnabled( appModel != null );
+		exportFourColumnPointsAction.setEnabled( appModel != null );
+		importFourColumnPointsAction.setEnabled( appModel != null );
 	}
 
 	private void exportPhyloXml()
@@ -159,6 +212,38 @@ public class TomancakPlugins extends AbstractContextual implements MastodonPlugi
 			final Model model = pluginAppModel.getAppModel().getModel();
 			InterpolateMissingSpots.interpolate( model );
 		}
+	}
+
+	private void importFromImages()
+	{
+		if ( pluginAppModel == null ) return;
+
+		this.getContext().getService(CommandService.class).run(
+			ReadInstanceSegmentationImages.class, true,
+			"appModel", pluginAppModel.getAppModel(),
+			"logService", this.getContext().getService(LogService.class));
+	}
+
+	private void exportThreeColumnPointsPerTimepoints()
+	{
+		if ( pluginAppModel != null )
+			WritePointsTXT.exportThreeColumnPointsPerTimepoints( pluginAppModel.getAppModel() );
+	}
+	private void importThreeColumnPoints()
+	{
+		if ( pluginAppModel != null )
+			ReadPointsTXT.importThreeColumnPoints( pluginAppModel.getAppModel() );
+	}
+
+	private void exportFourColumnPoints()
+	{
+		if ( pluginAppModel != null )
+			WritePointsTXT.exportFourColumnPoints( pluginAppModel.getAppModel() );
+	}
+	private void importFourColumnPoints()
+	{
+		if ( pluginAppModel != null )
+			ReadPointsTXT.importFourColumnPoints( pluginAppModel.getAppModel() );
 	}
 
 	/*

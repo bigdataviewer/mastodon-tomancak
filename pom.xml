@@ -54,6 +54,17 @@
 			<artifactId>ui-behaviour</artifactId>
 			<version>1.7.4</version>
 		</dependency>
+		<!-- to import org.jhotdraw.samples.svg.gui.ProgressIndicator -->
+		<dependency>
+			<groupId>org.jhotdraw</groupId>
+			<artifactId>jhotdraw</artifactId>
+			<version>7.6.0</version>
+		</dependency>
+		<!-- to import net.imglib2.img.display.imagej.ImageJFunctions -->
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-ij</artifactId>
+		</dependency>
 
 		<!-- Test dependencies -->
 		<dependency>
